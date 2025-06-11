@@ -33,6 +33,10 @@ function generateSampleData(size = 1000) {
 app.get('/data/:size?', (req, res) => {
   const size = parseInt(req.params.size) || 1000;
   const data = generateSampleData(size);
+
+  const jsonData = JSON.stringify(data, null, 2);
+  const uncompressedSize = Buffer.byteLength(jsonData, 'utf8');
+  console.log(`Generating sample data with ${size} records (uncompressed size: ${uncompressedSize} bytes)`);
   
   res.setHeader('Content-Type', 'application/json');
   res.json(data);

@@ -1,26 +1,54 @@
 const axios = require('axios');
 
-async function measureTransferSize(url, label) {
+async function measureHttpCompression(url) {
   try {
     const startTime = Date.now();
     const response = await axios.get(url, {
-      responseType: 'arraybuffer'
+      responseType: 'arraybuffer',
+      headers: {
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept': 'application/json'
+      }
     });
     const endTime = Date.now();
     
-    const transferSize = response.data.byteLength;
-    const duration = endTime - startTime;
-    
+    const uncompressedData = response.data.toString();
     return {
-      label,
-      transferSize,
-      duration,
+      label: 'HTTP Compression',
+      transferSize: response.data.byteLength,
+      duration: endTime - startTime,
       contentLength: response.headers['content-length'],
       contentEncoding: response.headers['content-encoding'],
+      contentType: response.headers['content-type'],
+      uncompressedSize: Buffer.byteLength(uncompressedData, 'utf8')
+    };
+  } catch (error) {
+    console.error('Error measuring HTTP compression:', error.message);
+    return null;
+  }
+}
+
+async function measureManualZip(url) {
+  try {
+    const startTime = Date.now();
+    const response = await axios.get(url, {
+      responseType: 'arraybuffer',
+      headers: {
+        'Accept': 'application/zip'
+      }
+    });
+    const endTime = Date.now();
+    
+    return {
+      label: 'Manual ZIP',
+      transferSize: response.data.byteLength,
+      duration: endTime - startTime,
+      contentLength: response.headers['content-length'],
+      contentEncoding: response.headers['content-encoding'] || 'none',
       contentType: response.headers['content-type']
     };
   } catch (error) {
-    console.error(`Error measuring ${label}:`, error.message);
+    console.error('Error measuring manual ZIP:', error.message);
     return null;
   }
 }
@@ -32,15 +60,17 @@ async function runComparison(dataSize = 1000) {
   const zipUrl = `http://localhost:3002/data/${dataSize}`;
   
   console.log('Measuring HTTP compression...');
-  const compressionResult = await measureTransferSize(compressionUrl, 'HTTP Compression');
+  const compressionResult = await measureHttpCompression(compressionUrl);
   
   console.log('Measuring manual zip...');
-  const zipResult = await measureTransferSize(zipUrl, 'Manual ZIP');
+  const zipResult = await measureManualZip(zipUrl);
   
   if (compressionResult && zipResult) {
     console.log('\n--- Results ---');
     console.log(`HTTP Compression:`);
     console.log(`  Transfer Size: ${compressionResult.transferSize.toLocaleString()} bytes`);
+    console.log(`  Uncompressed Size: ${compressionResult.uncompressedSize.toLocaleString()} bytes`);
+    console.log(`  Compression Ratio: ${((1 - compressionResult.transferSize / compressionResult.uncompressedSize) * 100).toFixed(2)}%`);
     console.log(`  Duration: ${compressionResult.duration}ms`);
     console.log(`  Content-Encoding: ${compressionResult.contentEncoding || 'none'}`);
     console.log(`  Content-Type: ${compressionResult.contentType}`);

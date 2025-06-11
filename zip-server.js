@@ -44,6 +44,8 @@ app.get('/data/:size?', (req, res) => {
   archive.pipe(res);
   
   const jsonData = JSON.stringify(data, null, 2);
+  const uncompressedSize = Buffer.byteLength(jsonData, 'utf8');
+  console.log(`Generating sample data with ${size} records (uncompressed size: ${uncompressedSize} bytes)`);
   archive.append(jsonData, { name: 'data.json' });
   
   archive.finalize();
