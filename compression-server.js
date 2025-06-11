@@ -37,8 +37,8 @@ app.get('/data/:size?', (req, res) => {
   const jsonData = JSON.stringify(data, null, 2);
   const uncompressedSize = Buffer.byteLength(jsonData, 'utf8');
   console.log(`Generating sample data with ${size} records (uncompressed size: ${uncompressedSize} bytes)`);
+  console.log(`Client Accept-Encoding: ${req.headers['accept-encoding'] || 'none'}`);
   
-  res.setHeader('Content-Type', 'application/json');
   res.json(data);
 });
 

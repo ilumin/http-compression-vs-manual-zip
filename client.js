@@ -1,31 +1,77 @@
 const axios = require('axios');
 
 async function measureHttpCompression(url) {
-  try {
+  return new Promise((resolve) => {
     const startTime = Date.now();
-    const response = await axios.get(url, {
-      responseType: 'arraybuffer',
+    let compressedSize = 0;
+    let chunks = [];
+    
+    const http = require('http');
+    const zlib = require('zlib');
+    const urlObj = new URL(url);
+    
+    const options = {
+      hostname: urlObj.hostname,
+      port: urlObj.port || 80,
+      path: urlObj.pathname + urlObj.search,
+      method: 'GET',
       headers: {
         'Accept-Encoding': 'gzip, deflate, br',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'User-Agent': 'Node.js HTTP Client'
       }
-    });
-    const endTime = Date.now();
-    
-    const uncompressedData = response.data.toString();
-    return {
-      label: 'HTTP Compression',
-      transferSize: response.data.byteLength,
-      duration: endTime - startTime,
-      contentLength: response.headers['content-length'],
-      contentEncoding: response.headers['content-encoding'],
-      contentType: response.headers['content-type'],
-      uncompressedSize: Buffer.byteLength(uncompressedData, 'utf8')
     };
-  } catch (error) {
-    console.error('Error measuring HTTP compression:', error.message);
-    return null;
-  }
+    
+    const req = http.request(options, (res) => {
+      res.on('data', (chunk) => {
+        compressedSize += chunk.length;
+        chunks.push(chunk);
+      });
+      
+      res.on('end', () => {
+        const endTime = Date.now();
+        const compressedBuffer = Buffer.concat(chunks);
+        
+        // Decompress based on encoding
+        let uncompressedData;
+        const encoding = res.headers['content-encoding'];
+        
+        try {
+          if (encoding === 'gzip') {
+            uncompressedData = zlib.gunzipSync(compressedBuffer).toString();
+          } else if (encoding === 'deflate') {
+            uncompressedData = zlib.inflateSync(compressedBuffer).toString();
+          } else if (encoding === 'br') {
+            uncompressedData = zlib.brotliDecompressSync(compressedBuffer).toString();
+          } else {
+            uncompressedData = compressedBuffer.toString();
+          }
+        } catch (err) {
+          console.error('Decompression error:', err.message);
+          uncompressedData = compressedBuffer.toString();
+        }
+        
+        const uncompressedSize = Buffer.byteLength(uncompressedData, 'utf8');
+        
+        resolve({
+          label: 'HTTP Compression',
+          transferSize: compressedSize,
+          uncompressedSize: uncompressedSize,
+          duration: endTime - startTime,
+          contentLength: res.headers['content-length'],
+          contentEncoding: res.headers['content-encoding'],
+          contentType: res.headers['content-type']
+        });
+      });
+    });
+    
+    req.on('error', (error) => {
+      console.error('Error measuring HTTP compression:', error.message);
+      resolve(null);
+    });
+    
+    req.end();
+  });
 }
 
 async function measureManualZip(url) {
