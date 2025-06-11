@@ -2,6 +2,17 @@
 
 This project compares the transfer size efficiency between HTTP compression (gzip) and manually zipping responses.
 
+## Why Compare?
+
+ผมเป็นคนขี้เกียจ ผมไม่เคยทำ zip เพื่อ response กลับไปหา client (แต่เคยทำ encrption เพื่อให้ content มันเล็กลงแล้วค่อยส่ง) พอมาเจอคนแนะนำว่าควรจะทำ zip แล้วส่งกลับไปให้ client เลยเกิดคำถามว่าเอ๊ะ แล้วที่เราใช้ๆมาตลอด (HTTP compression) มันดีกว่าไหม? หรือ manual zip มันดีกว่า? โปรเจคนี้เลยเกิดขึ้นมาเพื่อเปรียบเทียบการส่งข้อมูลระหว่าง HTTP compression กับ manual ZIP response
+
+## Overview
+
+โปรเจคนี้จะแบ่งออกเป็น 3 ส่วนหลัก:
+1. **Compression Server**: ใช้ Express กับ middleware compression เพื่อส่งข้อมูลที่ถูกบีบอัดด้วย gzip
+2. **Manual ZIP Server**: ใช้ Express กับ archiver เพื่อสร้างไฟล์ ZIP ด้วยข้อมูลที่ส่งกลับ
+3. **Client**: เรียก API ทั้งสองและเปรียบเทียบขนาดการส่งข้อมูล โดยจะเรียกทั้ง HTTP compression และ manual ZIP สำหรับ HTTP compression จะทดสอบทั้ง 4 ประเภท (gzip, deflate, br, all) เพื่อดูว่าประสิทธิภาพเป็นอย่างไร
+
 ## Setup
 
 1. Install dependencies:
